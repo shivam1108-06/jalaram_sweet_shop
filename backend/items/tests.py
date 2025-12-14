@@ -359,3 +359,76 @@ class TestCreateSKU:
         response = api_client.post(url, data, format='json')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.fixture
+def item_with_skus(db):
+    """Create an item with multiple SKUs"""
+    from items.models import Item, SKU
+    item = Item.objects.create(name='Kaju Katli', category='dry', sale_type='weight')
+    SKU.objects.create(item=item, code='KK-250', unit_value=250, price=450.00)
+    SKU.objects.create(item=item, code='KK-500', unit_value=500, price=900.00)
+    SKU.objects.create(item=item, code='KK-1000', unit_value=1000, price=1800.00)
+    # Inactive SKU - should not appear
+    SKU.objects.create(item=item, code='KK-OLD', unit_value=100, price=180.00, is_active=False)
+    return item
+
+
+@pytest.mark.django_db
+class TestItemDetail:
+    """Tests for viewing item details with SKUs - US-3.2"""
+
+    def test_can_view_item_detail(self, api_client, item_with_skus):
+        """Anyone can view item details"""
+        url = reverse('item-detail', kwargs={'pk': item_with_skus.id})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['name'] == 'Kaju Katli'
+        assert response.data['category'] == 'dry'
+        assert response.data['sale_type'] == 'weight'
+        assert response.data['inventory_unit'] == 'grams'
+
+    def test_item_detail_includes_active_skus(self, api_client, item_with_skus):
+        """Item detail includes list of active SKUs"""
+        url = reverse('item-detail', kwargs={'pk': item_with_skus.id})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'skus' in response.data
+        assert len(response.data['skus']) == 3  # Only active SKUs
+
+    def test_skus_include_required_fields(self, api_client, item_with_skus):
+        """Each SKU includes code, unit_value, price, display_unit"""
+        url = reverse('item-detail', kwargs={'pk': item_with_skus.id})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        sku = response.data['skus'][0]
+        assert 'code' in sku
+        assert 'unit_value' in sku
+        assert 'price' in sku
+        assert 'display_unit' in sku
+
+    def test_item_detail_returns_404_for_nonexistent(self, api_client):
+        """Returns 404 for non-existent item"""
+        url = reverse('item-detail', kwargs={'pk': 99999})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_item_detail_returns_404_for_inactive_item(self, api_client, db):
+        """Returns 404 for inactive item"""
+        from items.models import Item
+        inactive_item = Item.objects.create(
+            name='Inactive Sweet', category='dry', sale_type='weight', is_active=False
+        )
+        url = reverse('item-detail', kwargs={'pk': inactive_item.id})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
