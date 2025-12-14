@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Item, SKU
+from .models import Item, SKU, Purchase
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -64,3 +64,24 @@ class InventorySerializer(serializers.Serializer):
         if value < 0:
             raise serializers.ValidationError("Quantity cannot be negative")
         return value
+
+
+class PurchaseCreateSerializer(serializers.Serializer):
+    """Serializer for creating a purchase"""
+    sku_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Quantity must be positive")
+        return value
+
+
+class PurchaseResponseSerializer(serializers.ModelSerializer):
+    """Serializer for purchase response"""
+    sku = SKUListSerializer(read_only=True)
+    user = serializers.IntegerField(source='user.id')
+
+    class Meta:
+        model = Purchase
+        fields = ['id', 'user', 'sku', 'quantity', 'total_price', 'created_at']

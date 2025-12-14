@@ -68,9 +68,9 @@ describe('ItemDetailPage', () => {
     })
     expect(screen.getByText('500g')).toBeInTheDocument()
     expect(screen.getByText('1.0kg')).toBeInTheDocument()
-    expect(screen.getByText(/₹.*450/)).toBeInTheDocument()
-    expect(screen.getByText(/₹.*900/)).toBeInTheDocument()
-    expect(screen.getByText(/₹.*1,800/)).toBeInTheDocument()
+    expect(screen.getByText(/Rs..*450/)).toBeInTheDocument()
+    expect(screen.getByText(/Rs..*900/)).toBeInTheDocument()
+    expect(screen.getByText(/Rs..*1,800/)).toBeInTheDocument()
   })
 
   it('shows error message when item not found', async () => {
