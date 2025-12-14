@@ -222,10 +222,11 @@ class TestListItems:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
 
-    def test_unauthenticated_cannot_list_items(self, api_client, sample_items):
-        """Unauthenticated users cannot view items"""
+    def test_unauthenticated_can_list_items(self, api_client, sample_items):
+        """Unauthenticated users can view items (public browsing)"""
         url = reverse('list-items')
 
         response = api_client.get(url)
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 3

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import ItemsList from '../components/ItemsList'
 
 export default function HomePage() {
   const isLoggedIn = !!localStorage.getItem('access_token')
@@ -17,9 +18,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <p className="text-text-muted">
-        Sweet items will be displayed here once implemented.
-      </p>
+      <ItemsList />
     </div>
   )
 }

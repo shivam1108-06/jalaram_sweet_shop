@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from accounts.views import IsAdminUser
 from .serializers import ItemSerializer
 from .models import Item
@@ -21,9 +21,9 @@ class CreateItemView(APIView):
 
 
 class ListItemsView(APIView):
-    """List all active items - any authenticated user"""
+    """List all active items - public access"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         items = Item.objects.filter(is_active=True)
