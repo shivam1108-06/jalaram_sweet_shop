@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local apps
     'accounts',
+    'items',
 ]
 
 # Custom User Model
