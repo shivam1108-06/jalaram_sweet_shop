@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage'
 import AdminCreateCashierPage from './pages/AdminCreateCashierPage'
 import AdminCreateItemPage from './pages/AdminCreateItemPage'
 import AdminCreateSKUPage from './pages/AdminCreateSKUPage'
+import AdminInventoryPage from './pages/AdminInventoryPage'
 import ItemDetailPage from './pages/ItemDetailPage'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/admin/create-cashier" element={<AdminCreateCashierPage />} />
             <Route path="/admin/create-item" element={<AdminCreateItemPage />} />
             <Route path="/admin/create-sku" element={<AdminCreateSKUPage />} />
+            <Route path="/admin/inventory" element={<AdminInventoryPage />} />
             <Route path="/items/:id" element={<ItemDetailPage />} />
           </Routes>
         </main>
