@@ -29,3 +29,31 @@ class Item(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SKU(models.Model):
+    """Stock Keeping Unit - pricing and quantity options for items"""
+
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='skus')
+    code = models.CharField(max_length=50, unique=True)
+    unit_value = models.PositiveIntegerField()  # grams for weight, pieces for count
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'SKU'
+        verbose_name_plural = 'SKUs'
+
+    @property
+    def display_unit(self):
+        """Return human-readable unit display"""
+        if self.item.sale_type == Item.SaleType.WEIGHT:
+            if self.unit_value >= 1000:
+                return f"{self.unit_value / 1000:.1f}kg"
+            return f"{self.unit_value}g"
+        return f"{self.unit_value}pc" if self.unit_value == 1 else f"{self.unit_value}pcs"
+
+    def __str__(self):
+        return f"{self.item.name} - {self.code}"
