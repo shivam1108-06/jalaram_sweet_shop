@@ -37,3 +37,27 @@ class RegisterSerializer(serializers.ModelSerializer):
             role=User.Role.CUSTOMER
         )
         return user
+
+
+class CashierSerializer(serializers.ModelSerializer):
+    """Serializer for creating cashier accounts (admin only)"""
+
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password]
+    )
+
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'password', 'role']
+        read_only_fields = ['role']
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['email'],
+            email=validated_data['email'],
+            name=validated_data['name'],
+            password=validated_data['password'],
+            role=User.Role.CASHIER
+        )
+        return user
