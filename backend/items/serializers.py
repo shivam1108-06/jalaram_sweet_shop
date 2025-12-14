@@ -28,3 +28,29 @@ class SKUSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Price must be positive")
         return value
+
+
+class SKUListSerializer(serializers.ModelSerializer):
+    """Serializer for displaying SKUs in item detail (without item field)"""
+
+    display_unit = serializers.ReadOnlyField()
+
+    class Meta:
+        model = SKU
+        fields = ['id', 'code', 'unit_value', 'price', 'display_unit']
+
+
+class ItemDetailSerializer(serializers.ModelSerializer):
+    """Serializer for item detail with nested SKUs"""
+
+    inventory_unit = serializers.ReadOnlyField()
+    skus = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Item
+        fields = ['id', 'name', 'category', 'sale_type', 'inventory_unit', 'is_active', 'created_at', 'updated_at', 'skus']
+
+    def get_skus(self, obj):
+        """Return only active SKUs"""
+        active_skus = obj.skus.filter(is_active=True)
+        return SKUListSerializer(active_skus, many=True).data
