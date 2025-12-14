@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AdminCreateCashierPage from './pages/AdminCreateCashierPage'
+import AdminCreateItemPage from './pages/AdminCreateItemPage'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/admin/create-cashier" element={<AdminCreateCashierPage />} />
+            <Route path="/admin/create-item" element={<AdminCreateItemPage />} />
           </Routes>
         </main>
       </div>
