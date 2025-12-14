@@ -137,3 +137,103 @@ class TestUserLogin:
         }, format='json')
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.fixture
+def admin_user(db):
+    """Create an admin user"""
+    from accounts.models import User
+    user = User.objects.create_user(
+        username='admin@test.com',
+        email='admin@test.com',
+        name='Admin User',
+        password='AdminPass123!',
+        role='admin'
+    )
+    return user
+
+
+@pytest.fixture
+def admin_client(api_client, admin_user):
+    """API client authenticated as admin"""
+    url = reverse('login')
+    response = api_client.post(url, {
+        'email': admin_user.email,
+        'password': 'AdminPass123!'
+    }, format='json')
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+    return api_client
+
+
+@pytest.fixture
+def customer_user(db):
+    """Create a customer user"""
+    from accounts.models import User
+    user = User.objects.create_user(
+        username='customer@test.com',
+        email='customer@test.com',
+        name='Customer User',
+        password='CustomerPass123!',
+        role='customer'
+    )
+    return user
+
+
+@pytest.fixture
+def customer_client(api_client, customer_user):
+    """API client authenticated as customer"""
+    url = reverse('login')
+    response = api_client.post(url, {
+        'email': customer_user.email,
+        'password': 'CustomerPass123!'
+    }, format='json')
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+    return api_client
+
+
+@pytest.mark.django_db
+class TestCreateCashier:
+    """Tests for admin creating cashier accounts - US-1.3"""
+
+    def test_admin_can_create_cashier(self, admin_client):
+        """Admin can create a cashier account"""
+        url = reverse('create-cashier')
+        data = {
+            'name': 'New Cashier',
+            'email': 'cashier@example.com',
+            'password': 'CashierPass123!'
+        }
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['email'] == 'cashier@example.com'
+        assert response.data['name'] == 'New Cashier'
+        assert response.data['role'] == 'cashier'
+        assert 'password' not in response.data
+
+    def test_customer_cannot_create_cashier(self, customer_client):
+        """Customers are forbidden from creating cashier accounts"""
+        url = reverse('create-cashier')
+        data = {
+            'name': 'New Cashier',
+            'email': 'cashier@example.com',
+            'password': 'CashierPass123!'
+        }
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_unauthenticated_cannot_create_cashier(self, api_client):
+        """Unauthenticated users cannot create cashier accounts"""
+        url = reverse('create-cashier')
+        data = {
+            'name': 'New Cashier',
+            'email': 'cashier@example.com',
+            'password': 'CashierPass123!'
+        }
+
+        response = api_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
