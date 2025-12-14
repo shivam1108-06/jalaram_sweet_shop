@@ -48,9 +48,19 @@ class ItemDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Item
-        fields = ['id', 'name', 'category', 'sale_type', 'inventory_unit', 'is_active', 'created_at', 'updated_at', 'skus']
+        fields = ['id', 'name', 'category', 'sale_type', 'inventory_unit', 'inventory_qty', 'is_active', 'created_at', 'updated_at', 'skus']
 
     def get_skus(self, obj):
         """Return only active SKUs"""
         active_skus = obj.skus.filter(is_active=True)
         return SKUListSerializer(active_skus, many=True).data
+
+
+class InventorySerializer(serializers.Serializer):
+    """Serializer for setting inventory"""
+    quantity = serializers.IntegerField(min_value=0)
+
+    def validate_quantity(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Quantity cannot be negative")
+        return value

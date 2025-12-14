@@ -16,6 +16,7 @@ class Item(models.Model):
     name = models.CharField(max_length=255, unique=True)
     category = models.CharField(max_length=20, choices=Category.choices)
     sale_type = models.CharField(max_length=20, choices=SaleType.choices)
+    inventory_qty = models.PositiveIntegerField(default=0)  # grams for weight, pieces for count
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

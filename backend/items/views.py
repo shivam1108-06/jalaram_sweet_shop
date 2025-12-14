@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from accounts.views import IsAdminUser
-from .serializers import ItemSerializer, SKUSerializer, ItemDetailSerializer
+from .serializers import ItemSerializer, SKUSerializer, ItemDetailSerializer, InventorySerializer
 from .models import Item
 
 
@@ -54,3 +54,18 @@ class ItemDetailView(APIView):
         item = get_object_or_404(Item, pk=pk, is_active=True)
         serializer = ItemDetailSerializer(item)
         return Response(serializer.data)
+
+
+class SetInventoryView(APIView):
+    """Set inventory quantity for an item - admin only"""
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        item = get_object_or_404(Item, pk=pk)
+        serializer = InventorySerializer(data=request.data)
+        if serializer.is_valid():
+            item.inventory_qty = serializer.validated_data['quantity']
+            item.save()
+            return Response(ItemDetailSerializer(item).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
