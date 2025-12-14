@@ -432,3 +432,65 @@ class TestItemDetail:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestInventory:
+    """Tests for inventory management - US-4.1"""
+
+    def test_admin_can_set_inventory(self, admin_client, weight_item):
+        """Admin can set inventory quantity for an item"""
+        url = reverse('set-inventory', kwargs={'pk': weight_item.id})
+        data = {'quantity': 5000}  # 5000 grams
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['inventory_qty'] == 5000
+
+    def test_inventory_returned_in_item_detail(self, api_client, weight_item):
+        """Item detail includes inventory quantity"""
+        from items.models import Item
+        Item.objects.filter(pk=weight_item.id).update(inventory_qty=5000)
+        url = reverse('item-detail', kwargs={'pk': weight_item.id})
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['inventory_qty'] == 5000
+
+    def test_customer_cannot_set_inventory(self, customer_client, weight_item):
+        """Customers are forbidden from setting inventory"""
+        url = reverse('set-inventory', kwargs={'pk': weight_item.id})
+        data = {'quantity': 5000}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_unauthenticated_cannot_set_inventory(self, api_client, weight_item):
+        """Unauthenticated users cannot set inventory"""
+        url = reverse('set-inventory', kwargs={'pk': weight_item.id})
+        data = {'quantity': 5000}
+
+        response = api_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_inventory_cannot_be_negative(self, admin_client, weight_item):
+        """Inventory quantity cannot be negative"""
+        url = reverse('set-inventory', kwargs={'pk': weight_item.id})
+        data = {'quantity': -100}
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_set_inventory_returns_404_for_nonexistent_item(self, admin_client):
+        """Setting inventory for non-existent item returns 404"""
+        url = reverse('set-inventory', kwargs={'pk': 99999})
+        data = {'quantity': 5000}
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
