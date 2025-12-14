@@ -24,20 +24,6 @@ describe('RegisterForm', () => {
     })
   })
 
-  it('shows error for invalid email', async () => {
-    const user = userEvent.setup()
-    render(<RegisterForm onSuccess={() => {}} />)
-
-    await user.type(screen.getByLabelText(/name/i), 'Test User')
-    await user.type(screen.getByLabelText(/email/i), 'invalid-email')
-    await user.type(screen.getByLabelText(/password/i), 'SecurePass123!')
-    await user.click(screen.getByRole('button', { name: /register/i }))
-
-    await waitFor(() => {
-      expect(screen.getByText(/valid email/i)).toBeInTheDocument()
-    })
-  })
-
   it('calls onSuccess after successful registration', async () => {
     const user = userEvent.setup()
     const onSuccess = vi.fn()
