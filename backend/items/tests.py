@@ -494,3 +494,187 @@ class TestInventory:
         response = admin_client.post(url, data, format='json')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.fixture
+def item_with_inventory_and_skus(db):
+    """Create an item with inventory and SKUs for purchase testing"""
+    from items.models import Item, SKU
+    item = Item.objects.create(
+        name='Kaju Katli',
+        category='dry',
+        sale_type='weight',
+        inventory_qty=5000  # 5000 grams in stock
+    )
+    SKU.objects.create(item=item, code='KK-250', unit_value=250, price=450.00)
+    SKU.objects.create(item=item, code='KK-500', unit_value=500, price=900.00)
+    SKU.objects.create(item=item, code='KK-1000', unit_value=1000, price=1800.00)
+    return item
+
+
+@pytest.fixture
+def count_item_with_inventory(db):
+    """Create a count-based item with inventory"""
+    from items.models import Item, SKU
+    item = Item.objects.create(
+        name='Gulab Jamun',
+        category='milk',
+        sale_type='count',
+        inventory_qty=50  # 50 pieces in stock
+    )
+    SKU.objects.create(item=item, code='GJ-1', unit_value=1, price=25.00)
+    SKU.objects.create(item=item, code='GJ-6', unit_value=6, price=140.00)
+    return item
+
+
+@pytest.mark.django_db
+class TestPurchase:
+    """Tests for purchase flow - US-5.1, US-5.2, US-5.3"""
+
+    def test_customer_can_purchase_sku(self, customer_client, item_with_inventory_and_skus):
+        """Customer can purchase a SKU when inventory is sufficient"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['sku']['code'] == 'KK-250'
+        assert response.data['quantity'] == 1
+        assert 'total_price' in response.data
+
+    def test_purchase_deducts_inventory(self, customer_client, item_with_inventory_and_skus):
+        """Purchase deducts SKU unit_value from item inventory - US-5.3"""
+        from items.models import SKU, Item
+        sku = SKU.objects.get(code='KK-500')  # 500 grams
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 2}  # Buy 2x 500g = 1000g
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        item = Item.objects.get(pk=item_with_inventory_and_skus.id)
+        assert item.inventory_qty == 4000  # 5000 - 1000 = 4000
+
+    def test_purchase_fails_when_out_of_stock(self, customer_client, item_with_inventory_and_skus):
+        """Purchase fails when inventory is insufficient - US-5.2"""
+        from items.models import SKU, Item
+        Item.objects.filter(pk=item_with_inventory_and_skus.id).update(inventory_qty=0)
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'out of stock' in response.data['error'].lower()
+
+    def test_purchase_fails_when_insufficient_inventory(self, customer_client, item_with_inventory_and_skus):
+        """Purchase fails when requested quantity exceeds inventory"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-1000')  # 1000 grams
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 10}  # 10 x 1000g = 10000g, but only 5000g available
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'insufficient' in response.data['error'].lower()
+
+    def test_purchase_returns_total_price(self, customer_client, item_with_inventory_and_skus):
+        """Purchase response includes calculated total price"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 3}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert float(response.data['total_price']) == 1350.00
+
+    def test_purchase_count_item_deducts_pieces(self, customer_client, count_item_with_inventory):
+        """Purchase of count item deducts pieces from inventory"""
+        from items.models import SKU, Item
+        sku = SKU.objects.get(code='GJ-6')  # 6 pieces
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 2}  # Buy 2x 6pcs = 12 pieces
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        item = Item.objects.get(pk=count_item_with_inventory.id)
+        assert item.inventory_qty == 38  # 50 - 12 = 38
+
+    def test_admin_can_purchase(self, admin_client, item_with_inventory_and_skus):
+        """Admin can also make purchases"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_unauthenticated_cannot_purchase(self, api_client, item_with_inventory_and_skus):
+        """Unauthenticated users cannot make purchases"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = api_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_purchase_requires_valid_sku(self, customer_client):
+        """Purchase fails with invalid SKU ID"""
+        url = reverse('purchase')
+        data = {'sku_id': 99999, 'quantity': 1}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_purchase_requires_positive_quantity(self, customer_client, item_with_inventory_and_skus):
+        """Purchase fails with zero or negative quantity"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 0}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_purchase_linked_to_user(self, customer_client, customer_user, item_with_inventory_and_skus):
+        """Purchase is associated with the authenticated user"""
+        from items.models import SKU
+        sku = SKU.objects.get(code='KK-250')
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['user'] == customer_user.id
+
+    def test_cannot_purchase_inactive_sku(self, customer_client, item_with_inventory_and_skus):
+        """Cannot purchase an inactive SKU"""
+        from items.models import SKU
+        sku = SKU.objects.create(
+            item=item_with_inventory_and_skus,
+            code='KK-OLD',
+            unit_value=100,
+            price=180.00,
+            is_active=False
+        )
+        url = reverse('purchase')
+        data = {'sku_id': sku.id, 'quantity': 1}
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
