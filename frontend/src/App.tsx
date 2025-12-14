@@ -1,16 +1,24 @@
-import RegisterForm from './components/RegisterForm'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
 function App() {
   return (
-    <div className="min-h-screen bg-white">
-      <header className="bg-primary text-white p-4">
-        <h1 className="text-2xl font-bold">Jalaram Sweet Shop</h1>
-      </header>
-      <main className="flex flex-col items-center justify-center p-8">
-        <h2 className="text-xl font-semibold text-text-primary mb-6">Create Account</h2>
-        <RegisterForm onSuccess={() => alert('Registration successful!')} />
-      </main>
-    </div>
+    <BrowserRouter>
+      <div className="min-h-screen bg-white">
+        <header className="bg-primary text-white p-4">
+          <a href="/" className="text-2xl font-bold">Jalaram Sweet Shop</a>
+        </header>
+        <main>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
   )
 }
 
