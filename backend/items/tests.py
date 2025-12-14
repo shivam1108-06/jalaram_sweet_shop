@@ -168,3 +168,64 @@ class TestCreateItem:
         response = api_client.post(url, data, format='json')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.fixture
+def sample_items(db):
+    """Create sample items for testing"""
+    from items.models import Item
+    items = [
+        Item.objects.create(name='Kaju Katli', category='dry', sale_type='weight'),
+        Item.objects.create(name='Gulab Jamun', category='milk', sale_type='count'),
+        Item.objects.create(name='Soan Papdi', category='dry', sale_type='weight'),
+        Item.objects.create(name='Inactive Sweet', category='other', sale_type='weight', is_active=False),
+    ]
+    return items
+
+
+@pytest.mark.django_db
+class TestListItems:
+    """Tests for viewing all items - US-2.2"""
+
+    def test_authenticated_user_can_list_items(self, customer_client, sample_items):
+        """Any authenticated user can view the items list"""
+        url = reverse('list-items')
+
+        response = customer_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 3  # Only active items
+        names = [item['name'] for item in response.data]
+        assert 'Kaju Katli' in names
+        assert 'Gulab Jamun' in names
+        assert 'Soan Papdi' in names
+        assert 'Inactive Sweet' not in names
+
+    def test_list_items_returns_item_details(self, customer_client, sample_items):
+        """Items list includes name, category, sale_type, inventory_unit"""
+        url = reverse('list-items')
+
+        response = customer_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        item = next(i for i in response.data if i['name'] == 'Kaju Katli')
+        assert item['category'] == 'dry'
+        assert item['sale_type'] == 'weight'
+        assert item['inventory_unit'] == 'grams'
+
+    def test_admin_can_list_items(self, admin_client, sample_items):
+        """Admin can also view the items list"""
+        url = reverse('list-items')
+
+        response = admin_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 3
+
+    def test_unauthenticated_cannot_list_items(self, api_client, sample_items):
+        """Unauthenticated users cannot view items"""
+        url = reverse('list-items')
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
