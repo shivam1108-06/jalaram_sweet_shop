@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { getItemImage } from '../utils/itemImages'
 
 interface Item {
   id: number
@@ -75,15 +76,13 @@ export default function ItemsList() {
           to={`/items/${item.id}`}
           className="border border-border rounded-lg p-3 hover:shadow-lg transition-shadow bg-white group"
         >
-          {/* Placeholder Image */}
-          <div className="bg-gray-100 h-32 rounded-md mb-3 flex items-center justify-center overflow-hidden">
-            <svg
-              className="w-16 h-16 text-gray-300 group-hover:scale-110 transition-transform"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-            </svg>
+          {/* Item Image */}
+          <div className="bg-gray-100 h-32 rounded-md mb-3 overflow-hidden">
+            <img
+              src={getItemImage(item.name)}
+              alt={item.name}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+            />
           </div>
 
           {/* Category Badge */}

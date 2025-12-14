@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getItemImage } from '../utils/itemImages'
 import { useParams, Link } from 'react-router-dom'
 
 interface SKU {
@@ -151,8 +152,12 @@ export default function ItemDetailPage() {
 
       <div className="flex flex-col md:flex-row gap-8 mb-8">
         <div className="w-full md:w-1/3">
-          <div className="aspect-square bg-secondary/10 rounded-lg flex items-center justify-center">
-            <span className="text-6xl">🍬</span>
+          <div className="aspect-square bg-secondary/10 rounded-lg overflow-hidden">
+            <img
+              src={getItemImage(item.name)}
+              alt={item.name}
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
 
