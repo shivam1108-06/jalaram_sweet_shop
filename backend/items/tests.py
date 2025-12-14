@@ -230,3 +230,132 @@ class TestListItems:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 3
+
+
+@pytest.fixture
+def weight_item(db):
+    """Create a weight-based item"""
+    from items.models import Item
+    return Item.objects.create(name='Kaju Katli', category='dry', sale_type='weight')
+
+
+@pytest.fixture
+def count_item(db):
+    """Create a count-based item"""
+    from items.models import Item
+    return Item.objects.create(name='Gulab Jamun', category='milk', sale_type='count')
+
+
+@pytest.mark.django_db
+class TestCreateSKU:
+    """Tests for admin creating SKUs - US-3.1"""
+
+    def test_admin_can_create_sku_for_weight_item(self, admin_client, weight_item):
+        """Admin can create SKU for weight-based item"""
+        url = reverse('create-sku')
+        data = {
+            'item': weight_item.id,
+            'code': 'KK-250',
+            'unit_value': 250,
+            'price': 450.00
+        }
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['code'] == 'KK-250'
+        assert response.data['unit_value'] == 250
+        assert float(response.data['price']) == 450.00
+        assert response.data['item'] == weight_item.id
+        assert response.data['is_active'] == True
+
+    def test_admin_can_create_sku_for_count_item(self, admin_client, count_item):
+        """Admin can create SKU for count-based item"""
+        url = reverse('create-sku')
+        data = {
+            'item': count_item.id,
+            'code': 'GJ-6',
+            'unit_value': 6,
+            'price': 120.00
+        }
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['code'] == 'GJ-6'
+        assert response.data['unit_value'] == 6
+        assert float(response.data['price']) == 120.00
+
+    def test_sku_code_must_be_unique(self, admin_client, weight_item):
+        """Cannot create two SKUs with the same code"""
+        url = reverse('create-sku')
+        data = {
+            'item': weight_item.id,
+            'code': 'KK-250',
+            'unit_value': 250,
+            'price': 450.00
+        }
+
+        # Create first SKU
+        admin_client.post(url, data, format='json')
+
+        # Try to create duplicate
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_sku_requires_valid_item(self, admin_client):
+        """SKU must reference a valid item"""
+        url = reverse('create-sku')
+        data = {
+            'item': 99999,
+            'code': 'INVALID',
+            'unit_value': 250,
+            'price': 450.00
+        }
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_sku_price_must_be_positive(self, admin_client, weight_item):
+        """SKU price must be positive"""
+        url = reverse('create-sku')
+        data = {
+            'item': weight_item.id,
+            'code': 'KK-250',
+            'unit_value': 250,
+            'price': -50.00
+        }
+
+        response = admin_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_customer_cannot_create_sku(self, customer_client, weight_item):
+        """Customers are forbidden from creating SKUs"""
+        url = reverse('create-sku')
+        data = {
+            'item': weight_item.id,
+            'code': 'KK-250',
+            'unit_value': 250,
+            'price': 450.00
+        }
+
+        response = customer_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_unauthenticated_cannot_create_sku(self, api_client, weight_item):
+        """Unauthenticated users cannot create SKUs"""
+        url = reverse('create-sku')
+        data = {
+            'item': weight_item.id,
+            'code': 'KK-250',
+            'unit_value': 250,
+            'price': 450.00
+        }
+
+        response = api_client.post(url, data, format='json')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
